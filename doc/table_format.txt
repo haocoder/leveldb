@@ -23,7 +23,7 @@ a BlockHandle and contains the following information:
 order and partitioned into a sequence of data blocks.  These blocks
 come one after another at the beginning of the file.  Each data block
 is formatted according to the code in block_builder.cc, and then
-optionally compressed.
+optionally compressed.(key/value对按照key有序排列，并且被分为不同的block)
 
 (2) After the data blocks we store a bunch of meta blocks.  The
 supported meta block types are described below.  More meta block types
@@ -32,12 +32,12 @@ block_builder.cc and then optionally compressed.
 
 (3) A "metaindex" block.  It contains one entry for every other meta
 block where the key is the name of the meta block and the value is a
-BlockHandle pointing to that meta block.
+BlockHandle pointing to that meta block.(每一个meta block有一个metaindex)
 
 (4) An "index" block.  This block contains one entry per data block,
 where the key is a string >= last key in that data block and before
 the first key in the successive data block.  The value is the
-BlockHandle for the data block.
+BlockHandle for the data block.(每个data block有一个index）
 
 (6) At the very end of the file is a fixed length footer that contains
 the BlockHandle of the metaindex and index blocks as well as a magic number.

@@ -45,7 +45,8 @@ level (also called level-0).  When the number of young files exceeds a
 certain threshold (currently four), all of the young files are merged
 together with all of the overlapping level-1 files to produce a
 sequence of new level-1 files (we create a new level-1 file for every
-2MB of data.)
+2MB of data.)(当young files个数超出阈值，就将它们和level-1中重叠的文件合并成
+新的level-1文件)
 <p>
 Files in the young level may contain overlapping keys.  However files
 in other levels have distinct non-overlapping key ranges.  Consider
