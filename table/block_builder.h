@@ -21,7 +21,7 @@ class BlockBuilder {
   // Reset the contents as if the BlockBuilder was just constructed.
   void Reset();
 
-  // REQUIRES: Finish() has not been callled since the last call to Reset().
+  // REQUIRES: Finish() has not been called since the last call to Reset().
   // REQUIRES: key is larger than any previously added key
   void Add(const Slice& key, const Slice& value);
 
@@ -41,7 +41,7 @@ class BlockBuilder {
 
  private:
   const Options*        options_;
-  std::string           buffer_;      // Destination buffer
+  std::string           buffer_;      // Destination buffer，store block contents
   std::vector<uint32_t> restarts_;    // Restart points
   int                   counter_;     // Number of entries emitted since restart
   bool                  finished_;    // Has Finish() been called?

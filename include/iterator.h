@@ -49,7 +49,7 @@ class Iterator {
 
   // Return the key for the current entry.  The underlying storage for
   // the returned slice is valid only until the next modification of
-  // the iterator.
+  // the iterator.（在迭代器下一次修改之前，该函数返回的key是有效的）
   // REQUIRES: Valid()
   virtual Slice key() const = 0;
 
@@ -75,7 +75,7 @@ class Iterator {
     CleanupFunction function;
     void* arg1;
     void* arg2;
-    Cleanup* next;
+    Cleanup* next;      // 多个cleanup的作用
   };
   Cleanup cleanup_;
 

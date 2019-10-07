@@ -114,7 +114,7 @@ struct Options {
 
   // Number of keys between restart points for delta encoding of keys.
   // This parameter can be changed dynamically.  Most clients should
-  // leave this parameter alone.
+  // leave this parameter alone.(每个restart array包含的entry个数，默认16)
   //
   // Default: 16
   int block_restart_interval;
@@ -148,6 +148,8 @@ struct ReadOptions {
 
   // Should the data read for this iteration be cached in memory?
   // Callers may wish to set this field to false for bulk scans.
+  // 该参数决定读取的block是否需要cache,针对大块文件的读写遍历等需求，
+  // 为了避免读入的块把之前的热数据都淘汰掉，可以设为false
   // Default: true
   bool fill_cache;
 

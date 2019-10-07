@@ -12,7 +12,7 @@ namespace leveldb {
 static uint64_t PackSequenceAndType(uint64_t seq, ValueType t) {
   assert(seq <= kMaxSequenceNumber);
   assert(t <= kValueTypeForSeek);
-  return (seq << 8) | t;
+  return (seq << 8) | t;            // 将seq number和ValueType packet在一起（64-bit)，ValueType占低8位
 }
 
 void AppendInternalKey(std::string* result, const ParsedInternalKey& key) {

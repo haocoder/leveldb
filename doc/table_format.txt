@@ -32,7 +32,8 @@ block_builder.cc and then optionally compressed.
 
 (3) A "metaindex" block.  It contains one entry for every other meta
 block where the key is the name of the meta block and the value is a
-BlockHandle pointing to that meta block.(每一个meta block有一个metaindex)
+BlockHandle pointing to that meta block.(每一个meta block有一个metaindex，
+只有一个index block够表示所有的data block吗？)
 
 (4) An "index" block.  This block contains one entry per data block,
 where the key is a string >= last key in that data block and before

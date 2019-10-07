@@ -73,7 +73,7 @@ class TableBuilder {
   bool ok() const { return status().ok(); }
   void WriteBlock(BlockBuilder* block, BlockHandle* handle);
 
-  struct Rep;
+  struct Rep;       // 什么语法？
   Rep* rep_;
 
   // No copying allowed

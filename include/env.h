@@ -91,13 +91,14 @@ class Env {
                             const std::string& target) = 0;
 
   // Lock the specified file.  Used to prevent concurrent access to
-  // the same db by multiple processes.  On failure, stores NULL in
+  // the same db by multiple processes（多线程访问同一个db，需要lock the file吗）.
+  // On failure, stores NULL in
   // *lock and returns non-OK.
   //
   // On success, stores a pointer to the object that represents the
   // acquired lock in *lock and returns OK.  The caller should call
   // UnlockFile(*lock) to release the lock.  If the process exits,
-  // the lock will be automatically released.
+  // the lock will be automatically released.（进程退出，锁自动释放）
   //
   // If somebody else already holds the lock, finishes immediately
   // with a failure.  I.e., this call does not wait for existing locks
@@ -123,6 +124,7 @@ class Env {
 
   // Start a new thread, invoking "function(arg)" within the new thread.
   // When "function(arg)" returns, the thread will be destroyed.
+  // 与上面Schedule的异同点？
   virtual void StartThread(void (*function)(void* arg), void* arg) = 0;
 
   // *path is set to a temporary directory that can be used for testing. It may
@@ -158,7 +160,7 @@ class SequentialFile {
   // read (including if fewer than "n" bytes were successfully read).
   // If an error was encountered, returns a non-OK status.
   //
-  // REQUIRES: External synchronization
+  // REQUIRES: External synchronization（需要调用者同步对同一个文件的Read操作）
   virtual Status Read(size_t n, Slice* result, char* scratch) = 0;
 };
 
@@ -215,7 +217,7 @@ class FileLock {
 // Log the specified data to *info_log if info_log is non-NULL.
 extern void Log(Env* env, WritableFile* info_log, const char* format, ...)
 #   if defined(__GNUC__) || defined(__clang__)
-    __attribute__((__format__ (__printf__, 3, 4)))
+    __attribute__((__format__ (__printf__, 3, 4)))      // 函数attribute
 #   endif
     ;
 

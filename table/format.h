@@ -38,8 +38,8 @@ class BlockHandle {
   enum { kMaxEncodedLength = 10 + 10 };
 
  private:
-  uint64_t offset_;
-  uint64_t size_;
+  uint64_t offset_;         // block(data/meta block)在文件中的偏移
+  uint64_t size_;           // block(data/meta block)的大小
 };
 
 // Footer encapsulates the fixed information stored at the tail
@@ -71,8 +71,8 @@ class Footer {
   };
 
  private:
-  BlockHandle metaindex_handle_;
-  BlockHandle index_handle_;
+  BlockHandle metaindex_handle_;        // metaIndexBlock的元信息（偏移和大小）
+  BlockHandle index_handle_;            // indexBlock的元信息
 };
 
 // kTableMagicNumber was picked by running

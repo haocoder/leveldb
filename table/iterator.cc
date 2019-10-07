@@ -30,6 +30,7 @@ void Iterator::RegisterCleanup(CleanupFunction func, void* arg1, void* arg2) {
   if (cleanup_.function == NULL) {
     c = &cleanup_;
   } else {
+    // 添加新的cleanup
     c = new Cleanup;
     c->next = cleanup_.next;
     cleanup_.next = c;
@@ -39,7 +40,7 @@ void Iterator::RegisterCleanup(CleanupFunction func, void* arg1, void* arg2) {
   c->arg2 = arg2;
 }
 
-namespace {
+namespace {   // 嵌套的匿名命名空间，作用？
 class EmptyIterator : public Iterator {
  public:
   EmptyIterator(const Status& s) : status_(s) { }

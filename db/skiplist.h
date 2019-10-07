@@ -18,6 +18,7 @@
 //
 // (2) The contents of a Node except for the next/prev pointers are
 // immutable after the Node has been linked into the SkipList.
+// 除了next/prev指针，node的其它内容不可变
 // Only Insert() modifies the list, and it is careful to initialize
 // a node and use release-stores to publish the nodes in one or
 // more lists.

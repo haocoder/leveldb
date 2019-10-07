@@ -29,17 +29,19 @@ enum ValueType {
 // constructing a ParsedInternalKey object for seeking to a particular
 // sequence number (since we sort sequence numbers in decreasing order
 // and the value type is embedded as the low 8 bits in the sequence
-// number in internal keys, we need to use the highest-numbered
+// number in internal keys(sequence number的低8位保存value type),
+// we need to use the highest-numbered
 // ValueType, not the lowest).
 static const ValueType kValueTypeForSeek = kTypeLargeValueRef;
 
 typedef uint64_t SequenceNumber;
 
 // We leave eight bits empty at the bottom so a type and sequence#
-// can be packed together into 64-bits.
+// can be packed together into 64-bits.(64位无符号数最大表示：2^64-1)
 static const SequenceNumber kMaxSequenceNumber =
-    ((0x1ull << 56) - 1);
+    ((0x1ull << 56) - 1);           // 0x1ull << 56 = 2^56, 56位无符号数最大表示：2^56 - 1
 
+// ParsedInternalKey封装了Slice、SequenceNumber、ValueType
 struct ParsedInternalKey {
   Slice user_key;
   SequenceNumber sequence;
@@ -53,7 +55,7 @@ struct ParsedInternalKey {
 
 // Return the length of the encoding of "key".
 inline size_t InternalKeyEncodingLength(const ParsedInternalKey& key) {
-  return key.user_key.size() + 8;
+  return key.user_key.size() + 8;       // sequence和type被packet到64-bit中，其中type占低8-bit
 }
 
 // Append the serialization of "key" to *result.
@@ -68,7 +70,7 @@ extern bool ParseInternalKey(const Slice& internal_key,
                              ParsedInternalKey* result);
 
 // Returns the user key portion of an internal key.
-inline Slice ExtractUserKey(const Slice& internal_key) {
+inline Slice ExtractUserKey(const Slice& internal_key) {    // 为什么类型是Slice而不是ParsedInternalKey
   assert(internal_key.size() >= 8);
   return Slice(internal_key.data(), internal_key.size() - 8);
 }
@@ -184,7 +186,7 @@ extern bool FilenameStringToLargeValueRef(const Slice& in, LargeValueRef* ref);
 inline bool ParseInternalKey(const Slice& internal_key,
                              ParsedInternalKey* result) {
   const size_t n = internal_key.size();
-  if (n < 8) return false;
+  if (n < 8) return false;      // ??
   uint64_t num = DecodeFixed64(internal_key.data() + n - 8);
   unsigned char c = num & 0xff;
   result->sequence = num >> 8;

@@ -11,7 +11,7 @@
 #include <stdint.h>
 
 namespace leveldb {
-
+// 管理内存
 class Arena {
  public:
   Arena();
@@ -27,6 +27,7 @@ class Arena {
   // by the arena (including space allocated but not yet used for user
   // allocations).
   size_t MemoryUsage() const {
+    // 分配的内存大小 +  内存指针占用的空间大小
     return blocks_memory_ + blocks_.capacity() * sizeof(char*);
   }
 
@@ -55,11 +56,13 @@ inline char* Arena::Allocate(size_t bytes) {
   // them for our internal use).
   assert(bytes > 0);
   if (bytes <= alloc_bytes_remaining_) {
+    // 返回remaining_ memory，并且update alloc_ptr_和remaining memory大小
     char* result = alloc_ptr_;
     alloc_ptr_ += bytes;
     alloc_bytes_remaining_ -= bytes;
     return result;
   }
+  // 已分配空间不足，分配新的内存
   return AllocateFallback(bytes);
 }
 

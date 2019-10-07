@@ -27,7 +27,7 @@ class Block {
  private:
   uint32_t NumRestarts() const;
 
-  const char* data_;
+  const char* data_;            // key-value pairs of current block
   size_t size_;
   uint32_t restart_offset_;     // Offset in data_ of restart array
 
@@ -35,7 +35,7 @@ class Block {
   Block(const Block&);
   void operator=(const Block&);
 
-  class Iter;
+  class Iter;           // 声明内部类
 };
 
 }

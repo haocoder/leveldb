@@ -16,6 +16,7 @@ struct TableAndFile {
   Table* table;
 };
 
+// Not use key
 static void DeleteEntry(const Slice& key, void* value) {
   TableAndFile* tf = reinterpret_cast<TableAndFile*>(value);
   delete tf->table;
@@ -54,6 +55,7 @@ Iterator* TableCache::NewIterator(const ReadOptions& options,
   Slice key(buf, sizeof(buf));
   Cache::Handle* handle = cache_->Lookup(key);
   if (handle == NULL) {
+    // file与table的关系？
     std::string fname = TableFileName(dbname_, file_number);
     RandomAccessFile* file = NULL;
     Table* table = NULL;
@@ -72,7 +74,7 @@ Iterator* TableCache::NewIterator(const ReadOptions& options,
 
     TableAndFile* tf = new TableAndFile;
     tf->file = file;
-    tf->table = table;
+    tf->table = table;      // table is owed by cache_
     handle = cache_->Insert(key, tf, 1, &DeleteEntry);
   }
 

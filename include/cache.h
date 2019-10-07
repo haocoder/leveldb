@@ -11,6 +11,7 @@
 // the string.
 //
 // A builtin cache implementation with a least-recently-used eviction
+// (内置cache实现采用的是LRU淘汰策略，clients可以实现自己的cache版本)
 // policy is provided.  Clients may use their own implementations if
 // they want something more sophisticated (like scan-resistance, a
 // custom eviction policy, variable cache sizing, etc.)
@@ -38,7 +39,7 @@ class Cache {
   virtual ~Cache();
 
   // Opaque handle to an entry stored in the cache.
-  struct Handle { };
+  struct Handle { };    // 空结构体有什么作用？
 
   // Insert a mapping from key->value into the cache and assign it
   // the specified charge against the total cache capacity.
@@ -72,7 +73,8 @@ class Cache {
 
   // If the cache contains entry for key, erase it.  Note that the
   // underlying entry will be kept around until all existing handles
-  // to it have been released.
+  // to it have been released.（只有当entry对应的所有handle被released，
+  // 该实体才会被erase）
   virtual void Erase(const Slice& key) = 0;
 
   // Return a new numeric id.  May be used by multiple clients who are

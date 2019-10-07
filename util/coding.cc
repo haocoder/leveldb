@@ -3,7 +3,9 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
 #include "util/coding.h"
-
+// TODO: 研究位操作的知识点（有符号数、无符号数）
+// unsigned char/char* 与char/char*的
+// 仔细阅读《深入理解计算机系统》相关章节
 namespace leveldb {
 
 void EncodeFixed32(char* buf, uint32_t value) {
@@ -16,11 +18,15 @@ void EncodeFixed32(char* buf, uint32_t value) {
   buf[3] = (value >> 24) & 0xff;
 #endif
 }
-
+// 字节序：
+//     多字节对象的地址从所有字节使用的最小地址开始
+//     小端法： 最低有效字节在最前面
+//     大端法： 最高有效字节在最前面（即最小地址）
 void EncodeFixed64(char* buf, uint64_t value) {
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-  memcpy(buf, &value, sizeof(value));
+#if __BYTE_ORDER == __LITTLE_ENDIAN         // 在跨平台以及网络程序中需要考虑字节序
+  memcpy(buf, &value, sizeof(value));       // 小端字节序，value的最低有效字节在最前面，因此buf[0]保存value的最低字节
 #else
+  // 大端法： value的最小地址保存它的最高有效字节，buf[0]保存value的最低字节
   buf[0] = value & 0xff;
   buf[1] = (value >> 8) & 0xff;
   buf[2] = (value >> 16) & 0xff;

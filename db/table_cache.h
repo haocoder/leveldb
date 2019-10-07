@@ -19,6 +19,7 @@ namespace leveldb {
 class Env;
 
 class TableCache {
+ // table cache缓存的是sstable的索引数据，类似于文件系统中对inode的缓存
  public:
   TableCache(const std::string& dbname, const Options* options, int entries);
   ~TableCache();

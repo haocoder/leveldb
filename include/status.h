@@ -28,6 +28,7 @@ class Status {
   static Status OK() { return Status(); }
 
   // Return error status of an appropriate type.
+  // 静态成员函数访问类的私有构造函数？
   static Status NotFound(const Slice& msg, const Slice& msg2 = Slice()) {
     return Status(kNotFound, msg, Slice());
   }
@@ -68,7 +69,7 @@ class Status {
   Status(Code code, const Slice& msg, const Slice& msg2);
 
   typedef std::pair<Code, std::string> State;
-  State* state_;
+  State* state_;        // state_为NULL时，表示success
 };
 
 inline Status::Status(const Status& s) {

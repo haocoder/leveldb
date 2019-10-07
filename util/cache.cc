@@ -22,17 +22,19 @@ namespace leveldb {
 Cache::~Cache() {
 }
 
-namespace {
+namespace {     // 匿名命名空间的作用
 
 // LRU cache implementation
 
 // An entry is a variable length heap-allocated structure.  Entries
 // are kept in a circular doubly linked list ordered by access time.
+// 循环双向链表，按照访问时间排序
 struct LRUHandle {
   void* value;
   void (*deleter)(const Slice&, void* value);
   LRUHandle* next;
   LRUHandle* prev;
+  // charge表示所占内存大小
   size_t charge;      // TODO(opt): Only allow uint32_t?
   size_t key_length;
   size_t refs;        // TODO(opt): Pack with "key_length"?
@@ -131,6 +133,7 @@ LRUCache::LRUCache(size_t capacity)
 
 LRUCache::~LRUCache() {
   table_.clear();
+  // e1 <-> e2 <-> e3
   for (LRUHandle* e = lru_.next; e != &lru_; ) {
     LRUHandle* next = e->next;
     assert(e->refs == 1);  // Error if caller has an unreleased handle

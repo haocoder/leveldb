@@ -49,3 +49,5 @@ include/env.h
 include/table.h
 include/table_builder.h
     Lower-level modules that most clients probably won't use directly
+
+clients表示的是要使用这些API的应用程序代码

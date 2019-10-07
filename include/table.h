@@ -33,7 +33,7 @@ class Table {
   // *file must remain live while this Table is in use.
   static Status Open(const Options& options,
                      RandomAccessFile* file,
-                     Table** table);
+                     Table** table);            // API的设计思想包含value-result argument
 
   ~Table();
 
