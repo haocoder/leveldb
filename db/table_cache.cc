@@ -55,7 +55,7 @@ Iterator* TableCache::NewIterator(const ReadOptions& options,
   Slice key(buf, sizeof(buf));
   Cache::Handle* handle = cache_->Lookup(key);
   if (handle == NULL) {
-    // file与table的关系？
+    // file_number对应的file不在TableCache中
     std::string fname = TableFileName(dbname_, file_number);
     RandomAccessFile* file = NULL;
     Table* table = NULL;

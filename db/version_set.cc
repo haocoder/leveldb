@@ -21,6 +21,9 @@
 namespace leveldb {
 
 static double MaxBytesForLevel(int level) {
+    // 文件大小公式：
+    // level = 0, 4MB
+    // level >= 1, 10^n MB
   if (level == 0) {
     return 4 * 1048576.0;
   } else {
@@ -58,6 +61,7 @@ Version::~Version() {
       FileMetaData* f = files_[level][i];
       assert(f->refs >= 0);
       f->refs--;
+      // 当 f->refs > 1时FileMetaData不会被delete,依旧存在，这对version有什么影响？
       if (f->refs <= 0) {
         delete f;
       }
@@ -69,15 +73,15 @@ Version::~Version() {
 // An internal iterator.  For a given version/level pair, yields
 // information about the files in the level.  For a given entry, key()
 // is the largest key that occurs in the file, and value() is an
-// 8-byte value containing the file number of the file, encoding using
+// 8-byte value containing the file number of the file（magic）, encoding using
 // EncodeFixed64.
-class Version::LevelFileNumIterator : public Iterator {
+class Version::LevelFileNumIterator : public Iterator {     // 内部类定义
  public:
   LevelFileNumIterator(const Version* version,
                        const std::vector<FileMetaData*>* flist)
       : icmp_(version->vset_->icmp_.user_comparator()),
         flist_(flist),
-        index_(flist->size()) {        // Marks as invalid
+        index_(flist->size()) {        // Marks as invalid, because out of bound
   }
   virtual bool Valid() const {
     return index_ < flist_->size();
@@ -86,6 +90,7 @@ class Version::LevelFileNumIterator : public Iterator {
     uint32_t left = 0;
     uint32_t right = flist_->size() - 1;
     while (left < right) {
+      // 二分查找
       uint32_t mid = (left + right) / 2;
       int cmp = icmp_.Compare((*flist_)[mid]->largest.Encode(), target);
       if (cmp < 0) {
@@ -139,6 +144,7 @@ static Iterator* GetFileIterator(void* arg,
                                  const Slice& file_value) {
   TableCache* cache = reinterpret_cast<TableCache*>(arg);
   if (file_value.size() != 8) {
+    // file_value是file number，大小是8 bytes
     return NewErrorIterator(
         Status::Corruption("FileReader invoked with unexpected value"));
   } else {

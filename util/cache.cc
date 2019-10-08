@@ -37,6 +37,7 @@ struct LRUHandle {
   // charge表示所占内存大小
   size_t charge;      // TODO(opt): Only allow uint32_t?
   size_t key_length;
+  // reference number of LRUHandle object
   size_t refs;        // TODO(opt): Pack with "key_length"?
   char key_data[1];   // Beginning of key
 
@@ -133,7 +134,7 @@ LRUCache::LRUCache(size_t capacity)
 
 LRUCache::~LRUCache() {
   table_.clear();
-  // e1 <-> e2 <-> e3
+  // lru_<->e1 <-> e2 <-> e3 <-> lru_ <-> e1 (lru_是dummy head)
   for (LRUHandle* e = lru_.next; e != &lru_; ) {
     LRUHandle* next = e->next;
     assert(e->refs == 1);  // Error if caller has an unreleased handle
@@ -159,6 +160,7 @@ void LRUCache::LRU_Remove(LRUHandle* e) {
 
 void LRUCache::LRU_Append(LRUHandle* e) {
   // Make "e" newest entry by inserting just before lru_
+  // lru_.prev是最新被访问的条目，lru_.next是最老被访问的条目
   e->next = &lru_;
   e->prev = lru_.prev;
   e->prev->next = e;
@@ -166,7 +168,7 @@ void LRUCache::LRU_Append(LRUHandle* e) {
 }
 
 Cache::Handle* LRUCache::Lookup(const Slice& key) {
-  MutexLock l(&mutex_);
+  MutexLock l(&mutex_);     // 什么时候unlock
 
   LRUHandle dummy;
   dummy.next = &dummy;
@@ -177,6 +179,8 @@ Cache::Handle* LRUCache::Lookup(const Slice& key) {
   } else {
     LRUHandle* e = const_cast<LRUHandle*>(*iter);
     e->refs++;
+    // 访问了cache的数据后时，依次执行LRU_Remove和LRU_Append
+    // 将这条数据移到lru_.pre，即放到列表首段，表示最新被访问到的数据
     LRU_Remove(e);
     LRU_Append(e);
     return reinterpret_cast<Handle*>(e);
@@ -197,10 +201,10 @@ Cache::Handle* LRUCache::Insert(const Slice& key, void* value, size_t charge,
   MutexLock l(&mutex_);
 
   LRUHandle* e = reinterpret_cast<LRUHandle*>(
-      malloc(sizeof(LRUHandle)-1 + key.size()));
+      malloc(sizeof(LRUHandle)-1 + key.size())); // 减去char key_data[1]占得空间
   e->value = value;
   e->deleter = deleter;
-  e->charge = charge;
+  e->charge = charge;       // 调用者如何知道charge大小，为啥不是sizeof(LRUHandle)-1 + key.size() ？
   e->key_length = key.size();
   e->refs = 2;  // One from LRUCache, one for the returned handle
   memcpy(e->key_data, key.data(), key.size());
@@ -209,7 +213,7 @@ Cache::Handle* LRUCache::Insert(const Slice& key, void* value, size_t charge,
 
   std::pair<HandleTable::iterator,bool> p = table_.insert(e);
   if (!p.second) {
-    // Kill existing entry
+    // Kill existing entry and insert e
     LRUHandle* old = const_cast<LRUHandle*>(*(p.first));
     LRU_Remove(old);
     table_.erase(p.first);
@@ -217,6 +221,7 @@ Cache::Handle* LRUCache::Insert(const Slice& key, void* value, size_t charge,
     Unref(old);
   }
 
+  // 根据capacity_的大小，删除最近最少使用的数据
   while (usage_ > capacity_ && lru_.next != &lru_) {
     LRUHandle* old = lru_.next;
     LRU_Remove(old);
