@@ -57,7 +57,7 @@ class MemTable {
 
   KeyComparator comparator_;
   Arena arena_;
-  Table table_;
+  Table table_;         //  memtable内部是一个skiplist
 
   // No copying allowed
   MemTable(const MemTable&);

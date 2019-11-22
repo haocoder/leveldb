@@ -9,7 +9,7 @@
 
 #ifndef STORAGE_LEVELDB_PORT_PORT_EXAMPLE_H_
 #define STORAGE_LEVELDB_PORT_PORT_EXAMPLE_H_
-
+#include <stdint.h>
 namespace leveldb {
 namespace port {
 
@@ -70,7 +70,7 @@ class AtomicPointer {
   AtomicPointer();
 
   // Initialize to hold v
-  explicit AtomicPointer(void* v) : rep_(v) { }
+  explicit AtomicPointer(void* v) : rep_(reinterpret_cast<intptr_t >(v)) { }
 
   // Read and return the stored pointer with the guarantee that no
   // later memory access (read or write) by this thread can be

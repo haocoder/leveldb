@@ -56,7 +56,7 @@ class CondVar {
 // Storage for a lock-free pointer
 class AtomicPointer {
  private:
-  std::atomic<void*> rep_;
+  std::atomic<void*> rep_;          // std::atomic<T>及memory order
  public:
   AtomicPointer() { }
   explicit AtomicPointer(void* v) : rep_(v) { }

@@ -24,6 +24,7 @@ class SequentialFile;
 class Slice;
 class WritableFile;
 
+// 封装了leveldb对OS文件系统的访问接口
 class Env {
  public:
   Env() { }
@@ -118,13 +119,14 @@ class Env {
   // added to the same Env may run concurrently in different threads.
   // I.e., the caller may not assume that background work items are
   // serialized.
+  // 后台线程执行该函数，同一个env中的多个function可以并发执行
   virtual void Schedule(
       void (*function)(void* arg),
       void* arg) = 0;
 
   // Start a new thread, invoking "function(arg)" within the new thread.
   // When "function(arg)" returns, the thread will be destroyed.
-  // 与上面Schedule的异同点？
+  // 与上面Schedule的异同点？ 该函数会启动一个线程执行function
   virtual void StartThread(void (*function)(void* arg), void* arg) = 0;
 
   // *path is set to a temporary directory that can be used for testing. It may

@@ -62,7 +62,7 @@ inline char* Arena::Allocate(size_t bytes) {
     alloc_bytes_remaining_ -= bytes;
     return result;
   }
-  // 已分配空间不足，分配新的内存
+  // 剩余空间不足，分配新的内存
   return AllocateFallback(bytes);
 }
 

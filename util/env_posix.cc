@@ -41,7 +41,7 @@ class PosixSequentialFile: public SequentialFile {
   virtual Status Read(size_t n, Slice* result, char* scratch) {
     Status s;
     size_t r = fread_unlocked(scratch, 1, n, file_);
-    *result = Slice(scratch, r);
+    *result = Slice(scratch, r);        // result指向一个临时对象？
     if (r < n) {
       if (feof(file_)) {
         // We leave status as ok if we hit the end of the file
@@ -70,196 +70,201 @@ class PosixRandomAccessFile: public RandomAccessFile {
   virtual Status Read(uint64_t offset, size_t n, Slice* result,
                       char* scratch) const {
     Status s;
-    ssize_t r = pread(fd_, scratch, n, static_cast<off_t>(offset));
-    *result = Slice(scratch, (r < 0) ? 0 : r);
-    if (r < 0) {
-      // An error: return a non-ok status
-      s = Status::IOError(filename_, strerror(errno));
-    }
-    return s;
-  }
-};
+      /*类似于read，但该函数从offset处开始读取，不会修改文件偏移量，多线程下不会引起竞争状态 */
+     ssize_t r = pread(fd_, scratch, n, static_cast<off_t>(offset));
+     *result = Slice(scratch, (r < 0) ? 0 : r);
+     if (r < 0) {
+       // An error: return a non-ok status
+       s = Status::IOError(filename_, strerror(errno));
+     }
+     return s;
+   }
+ };
 
-// We preallocate up to an extra megabyte and use memcpy to append new
-// data to the file.  This is safe since we either properly close the
-// file before reading from it, or for log files, the reading code
-// knows enough to skip zero suffixes.
-class PosixMmapFile : public WritableFile {
- private:
-  std::string filename_;
-  int fd_;
-  size_t page_size_;
-  size_t map_size_;       // How much extra memory to map at a time
-  char* base_;            // The mapped region
-  char* limit_;           // Limit of the mapped region
-  char* dst_;             // Where to write next  (in range [base_,limit_])
-  char* last_sync_;       // Where have we synced up to
-  uint64_t file_offset_;  // Offset of base_ in file
+ // We preallocate up to an extra megabyte and use memcpy to append new
+ // data to the file.  This is safe since we either properly close the
+ // file before reading from it, or for log files, the reading code
+ // knows enough to skip zero suffixes.
+ class PosixMmapFile : public WritableFile {
+  private:
+   std::string filename_;
+   int fd_;
+   size_t page_size_;
+   size_t map_size_;       // How much extra memory to map at a time
+   char* base_;            // The mapped region
+   char* limit_;           // Limit of the mapped region
+   char* dst_;             // Where to write next  (in range [base_,limit_])
+   char* last_sync_;       // Where have we synced up to
+   uint64_t file_offset_;  // Offset of base_ in file
 
-  // Have we done an munmap of unsynced data?
-  bool pending_sync_;
+   // Have we done an unmap of unsynced data?
+   bool pending_sync_;
 
-  // Roundup x to a multiple of y
-  static size_t Roundup(size_t x, size_t y) {
-    return ((x + y - 1) / y) * y;
-  }
+   // Roundup x to a multiple of y
+   static size_t Roundup(size_t x, size_t y) {
+     return ((x + y - 1) / y) * y;
+   }
 
-  size_t TruncateToPageBoundary(size_t s) {
-    s -= (s & (page_size_ - 1));
-    assert((s % page_size_) == 0);
-    return s;
-  }
+   size_t TruncateToPageBoundary(size_t s) {
+     s -= (s & (page_size_ - 1));
+     assert((s % page_size_) == 0);
+     return s;
+   }
 
-  void UnmapCurrentRegion() {
-    if (base_ != NULL) {
-      if (last_sync_ < limit_) {
-        // Defer syncing this data until next Sync() call, if any
-        pending_sync_ = true;
-      }
-      munmap(base_, limit_ - base_);
-      file_offset_ += limit_ - base_;
-      base_ = NULL;
-      limit_ = NULL;
-      last_sync_ = NULL;
-      dst_ = NULL;
+   void UnmapCurrentRegion() {
+     if (base_ != NULL) {
+       if (last_sync_ < limit_) {
+         // Defer syncing this data until next Sync() call, if any
+         pending_sync_ = true;
+       }
+       munmap(base_, limit_ - base_);
+       file_offset_ += limit_ - base_;
+       base_ = NULL;
+       limit_ = NULL;
+       last_sync_ = NULL;
+       dst_ = NULL;
 
-      // Increase the amount we map the next time, but capped at 1MB
-      if (map_size_ < (1<<20)) {
-        map_size_ *= 2;
-      }
-    }
-  }
+       // Increase the amount we map the next time, but capped at 1MB
+       if (map_size_ < (1<<20)) {
+         map_size_ *= 2;
+       }
+     }
+   }
 
-  bool MapNewRegion() {
-    assert(base_ == NULL);
-    if (ftruncate(fd_, file_offset_ + map_size_) < 0) {
-      return false;
-    }
-    void* ptr = mmap(NULL, map_size_, PROT_READ | PROT_WRITE, MAP_SHARED,
-                     fd_, file_offset_);
-    if (ptr == MAP_FAILED) {
-      return false;
-    }
-    base_ = reinterpret_cast<char*>(ptr);
-    limit_ = base_ + map_size_;
-    dst_ = base_;
-    last_sync_ = base_;
-    return true;
-  }
+   bool MapNewRegion() {
+     assert(base_ == NULL);
+     if (ftruncate(fd_, file_offset_ + map_size_) < 0) {
+       return false;
+     }
+     void* ptr = mmap(NULL, map_size_, PROT_READ | PROT_WRITE, MAP_SHARED,
+                      fd_, file_offset_);
+     if (ptr == MAP_FAILED) {
+       return false;
+     }
+     base_ = reinterpret_cast<char*>(ptr);
+     limit_ = base_ + map_size_;
+     dst_ = base_;
+     last_sync_ = base_;
+     return true;
+   }
 
- public:
-  PosixMmapFile(const std::string& fname, int fd, size_t page_size)
-      : filename_(fname),
-        fd_(fd),
-        page_size_(page_size),
-        map_size_(Roundup(65536, page_size)),
-        base_(NULL),
-        limit_(NULL),
-        dst_(NULL),
-        last_sync_(NULL),
-        file_offset_(0),
-        pending_sync_(false) {
-    assert((page_size & (page_size - 1)) == 0);
-  }
+  public:
+   PosixMmapFile(const std::string& fname, int fd, size_t page_size)
+       : filename_(fname),
+         fd_(fd),
+         page_size_(page_size),
+         map_size_(Roundup(65536, page_size)),
+         base_(NULL),
+         limit_(NULL),
+         dst_(NULL),
+         last_sync_(NULL),
+         file_offset_(0),
+         pending_sync_(false) {
+     assert((page_size & (page_size - 1)) == 0);
+   }
 
 
-  ~PosixMmapFile() {
-    if (fd_ >= 0) {
-      PosixMmapFile::Close();
-    }
-  }
+   ~PosixMmapFile() {
+     if (fd_ >= 0) {
+       PosixMmapFile::Close();
+     }
+   }
 
-  virtual Status Append(const Slice& data) {
-    const char* src = data.data();
-    size_t left = data.size();
-    while (left > 0) {
-      assert(base_ <= dst_);
-      assert(dst_ <= limit_);
-      size_t avail = limit_ - dst_;
-      if (avail == 0) {
-        UnmapCurrentRegion();
-        MapNewRegion();
-      }
+   virtual Status Append(const Slice& data) {
+     const char* src = data.data();
+     size_t left = data.size();
+     while (left > 0) {
+       assert(base_ <= dst_);
+       assert(dst_ <= limit_);
+       size_t avail = limit_ - dst_;
+       if (avail == 0) {
+         UnmapCurrentRegion();
+         MapNewRegion();
+       }
 
-      size_t n = (left <= avail) ? left : avail;
-      memcpy(dst_, src, n);
-      dst_ += n;
-      src += n;
-      left -= n;
-    }
-    return Status::OK();
-  }
+       size_t n = (left <= avail) ? left : avail;
+       memcpy(dst_, src, n);
+       dst_ += n;
+       src += n;
+       left -= n;
+     }
+     return Status::OK();
+   }
 
-  virtual Status Close() {
-    Status s;
-    size_t unused = limit_ - dst_;
-    UnmapCurrentRegion();
-    if (unused > 0) {
-      // Trim the extra space at the end of the file
-      if (ftruncate(fd_, file_offset_ - unused) < 0) {
-        s = Status::IOError(filename_, strerror(errno));
-      }
-    }
+   virtual Status Close() {
+     Status s;
+     size_t unused = limit_ - dst_;
+     UnmapCurrentRegion();
+     if (unused > 0) {
+       // Trim the extra space at the end of the file
+       if (ftruncate(fd_, file_offset_ - unused) < 0) {
+         s = Status::IOError(filename_, strerror(errno));
+       }
+     }
 
-    if (close(fd_) < 0) {
-      if (s.ok()) {
-        s = Status::IOError(filename_, strerror(errno));
-      }
-    }
+     if (close(fd_) < 0) {
+       if (s.ok()) {
+         s = Status::IOError(filename_, strerror(errno));
+       }
+     }
 
-    fd_ = -1;
-    base_ = NULL;
-    limit_ = NULL;
-    return s;
-  }
+     fd_ = -1;
+     base_ = NULL;
+     limit_ = NULL;
+     return s;
+   }
 
-  virtual Status Flush() {
-    return Status::OK();
-  }
+   virtual Status Flush() {
+     return Status::OK();
+   }
 
-  virtual Status Sync() {
-    Status s;
+   virtual Status Sync() {
+     Status s;
 
-    if (pending_sync_) {
-      // Some unmapped data was not synced
-      pending_sync_ = false;
-      if (fdatasync(fd_) < 0) {
-        s = Status::IOError(filename_, strerror(errno));
-      }
-    }
+     if (pending_sync_) {
+       // Some unmapped data was not synced
+       pending_sync_ = false;
+       if (fdatasync(fd_) < 0) {
+         s = Status::IOError(filename_, strerror(errno));
+       }
+     }
 
-    if (dst_ > last_sync_) {
-      // Find the beginnings of the pages that contain the first and last
-      // bytes to be synced.
-      size_t p1 = TruncateToPageBoundary(last_sync_ - base_);
-      size_t p2 = TruncateToPageBoundary(dst_ - base_ - 1);
-      last_sync_ = dst_;
-      if (msync(base_ + p1, p2 - p1 + page_size_, MS_SYNC) < 0) {
-        s = Status::IOError(filename_, strerror(errno));
-      }
-    }
+     if (dst_ > last_sync_) {
+       // Find the beginnings of the pages that contain the first and last
+       // bytes to be synced.
+       size_t p1 = TruncateToPageBoundary(last_sync_ - base_);
+       size_t p2 = TruncateToPageBoundary(dst_ - base_ - 1);
+       last_sync_ = dst_;
+       if (msync(base_ + p1, p2 - p1 + page_size_, MS_SYNC) < 0) {
+         s = Status::IOError(filename_, strerror(errno));
+       }
+     }
 
-    return s;
-  }
-};
+     return s;
+   }
+ };
 
-static int LockOrUnlock(int fd, bool lock) {
-  errno = 0;
-  struct flock f;
-  memset(&f, 0, sizeof(f));
-  f.l_type = (lock ? F_WRLCK : F_UNLCK);
-  f.l_whence = SEEK_SET;
-  f.l_start = 0;
-  f.l_len = 0;        // Lock/unlock entire file
-  return fcntl(fd, F_SETLK, &f);
-}
+ static int LockOrUnlock(int fd, bool lock) {
+   errno = 0;
+   struct flock f;
+   memset(&f, 0, sizeof(f));
+   f.l_type = (lock ? F_WRLCK : F_UNLCK);
+   f.l_whence = SEEK_SET;
+   f.l_start = 0;
+   f.l_len = 0;        // Lock/unlock entire file
+   return fcntl(fd, F_SETLK, &f);         // non-blocking
+ }
 
-class PosixFileLock : public FileLock {
- public:
-  int fd_;
-};
+ class PosixFileLock : public FileLock {
+  public:
+   int fd_;
+ };
 
-class PosixEnv : public Env {
+ class PosixEnv : public Env {
+  // 总结操作文件的系统调用
+  /*
+   *
+   */
  public:
   PosixEnv();
   virtual ~PosixEnv() {
@@ -287,7 +292,7 @@ class PosixEnv : public Env {
       return Status::IOError(fname, strerror(errno));
     }
     struct stat sbuf;
-    if (fstat(fd, &sbuf) != 0) {
+    if (fstat(fd, &sbuf) != 0) {        // 检查文件状态
       *result = NULL;
       Status s = Status::IOError(fname, strerror(errno));
       close(fd);
@@ -331,7 +336,7 @@ class PosixEnv : public Env {
 
   virtual Status DeleteFile(const std::string& fname) {
     Status result;
-    if (unlink(fname.c_str()) != 0) {
+    if (unlink(fname.c_str()) != 0) {           // means ?  文件属性
       result = Status::IOError(fname, strerror(errno));
     }
     return result;
@@ -355,8 +360,8 @@ class PosixEnv : public Env {
 
   virtual Status GetFileSize(const std::string& fname, uint64_t* size) {
     Status s;
-    struct stat sbuf;
-    if (stat(fname.c_str(), &sbuf) != 0) {
+    struct stat sbuf;                           // 为什么要加struct
+    if (stat(fname.c_str(), &sbuf) != 0) {      // fstat和stat的区别 ？
       *size = 0;
       s = Status::IOError(fname, strerror(errno));
     } else {
@@ -422,7 +427,7 @@ class PosixEnv : public Env {
   virtual void Logv(WritableFile* info_log, const char* format, va_list ap) {
     pthread_t tid = pthread_self();
     uint64_t thread_id = 0;
-    memcpy(&thread_id, &tid, min(sizeof(thread_id), sizeof(tid)));
+    memcpy(&thread_id, &tid, std::min(sizeof(thread_id), sizeof(tid)));
 
     // We try twice: the first time with a fixed-size stack allocated buffer,
     // and the second time with a much larger dynamically allocated buffer.

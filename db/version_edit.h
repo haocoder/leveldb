@@ -67,6 +67,7 @@ class VersionEdit {
   }
 
   // Delete the specified "file" from the specified "level".
+  // 删除给定level的文件时不会去删除new_files中的元素，而是用一个set来记录要被删除的文件
   void DeleteFile(int level, uint64_t file) {
     deleted_files_.insert(std::make_pair(level, file));
   }

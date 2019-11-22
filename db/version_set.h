@@ -57,10 +57,10 @@ class Version {
   std::string DebugString() const;
 
  private:
-  friend class Compaction;
+  friend class Compaction;          // 友元类
   friend class VersionSet;
 
-  class LevelFileNumIterator;
+  class LevelFileNumIterator;       // 内部类声明
   Iterator* NewConcatenatingIterator(const ReadOptions&, int level) const;
 
   VersionSet* vset_;            // VersionSet to which this Version belongs
@@ -77,7 +77,7 @@ class Version {
   double compaction_score_;
   int compaction_level_;
 
-  explicit Version(VersionSet* vset)
+  explicit Version(VersionSet* vset)            // explicit构造函数
       : vset_(vset), next_(NULL), refs_(0),
         cleanup_mem_(NULL),
         compaction_score_(-1),
@@ -175,7 +175,7 @@ class VersionSet {
   class Builder;
 
   friend class Compaction;
-  friend class Version;
+  friend class Version;         //Version与VersionSet 两个类互为友元类
 
   Status Finalize(Version* v);
 

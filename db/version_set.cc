@@ -135,7 +135,7 @@ class Version::LevelFileNumIterator : public Iterator {     // 内部类定义
   const InternalKeyComparator icmp_;
   const std::vector<FileMetaData*>* const flist_;
   int index_;
-
+  // mutable的用法
   mutable char value_buf_[8];  // Used for encoding the file number for value()
 };
 

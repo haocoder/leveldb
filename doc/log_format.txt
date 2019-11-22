@@ -10,7 +10,7 @@ Each block consists of a sequence of records:
 	data: uint8[length]
 
 A record never starts within the last seven bytes of a block(因为一个
-record的checksum, length, type总共占7个字节，如果这个record从一个block的
+record的Header(checksum, length, type)总共占7个字节，如果这个record从一个block的
 最后七个字节开始，那么data部分就会出现在下一个block中).  Any
 leftover bytes here form the trailer, which must consist entirely of
 zero bytes and must be skipped by readers.  In particular, even if
@@ -41,13 +41,20 @@ Example: consider a sequence of user records:
    A: length 1000
    B: length 97270
    C: length 8000
+
+   Block1 : A ( 7 + 1000 )       -> record type is FULL
+          : B ( 7 + 31754 )      -> record type is FIRST
+   Block2 : B ( 7 + 32761 )      -> record type is MIDDLE (占满了Block2)
+   Block3 : B ( 7 + 32755 )      -> record type is LAST   (Block3还剩6字节，所以C存放在Bloc4中)
+   Block4 : C ( 7 + 8000 )       -> record type is FULL
+
 A will be stored as a FULL record in the first block.
 
 B will be split into three fragments: first fragment occupies the rest
 of the first block, second fragment occupies the entirety of the
 second block, and the third fragment occupies a prefix of the third
 block.  This will leave six bytes free in the third block, which will
-be left empty as the trailer.
+be left empty as the trailer.(每个fragment都包含data部分和Header部分(7bytes))
 
 C will be stored as a FULL record in the fourth block.
 

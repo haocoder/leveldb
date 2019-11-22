@@ -93,6 +93,7 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
       s = dest_->Flush();
     }
   }
+  // 即使write header和payload失败，block offset也要移动
   block_offset_ += kHeaderSize + n;
   return s;
 }

@@ -51,7 +51,7 @@ class Reader {
   Reporter* const reporter_;
   bool const checksum_;
   char* const backing_store_;
-  Slice buffer_;
+  Slice buffer_;                // used to read record from log file
   bool eof_;   // Last Read() indicated EOF by returning < kBlockSize
 
   // Extend record types with the following special values

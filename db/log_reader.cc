@@ -104,6 +104,8 @@ void Reader::ReportDrop(size_t bytes, const char* reason) {
 }
 
 unsigned int Reader::ReadPhysicalRecord(Slice* result) {
+  // 一个record可能在一个block中或者在多个block中，因此该函数执行一次
+  // 并不一定会读取整个record (参考log file中record的格式)
   while (true) {
     if (buffer_.size() <= kHeaderSize) {
       if (!eof_) {
@@ -112,7 +114,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
         Status status = file_->Read(kBlockSize, &buffer_, backing_store_);
         if (!status.ok()) {
           if (reporter_ != NULL) {
-            reporter_->Corruption(kBlockSize, status);
+            reporter_->Corruption(kBlockSize, status);      // report corruption ofread
           }
           buffer_.clear();
           eof_ = true;
@@ -137,9 +139,9 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
     const char* header = buffer_.data();
     const uint32_t a = static_cast<uint32_t>(header[4]) & 0xff;
     const uint32_t b = static_cast<uint32_t>(header[5]) & 0xff;
-    const unsigned int type = header[6];
-    const uint32_t length = a | (b << 8);
-    if (kHeaderSize + length > buffer_.size()) {
+    const unsigned int type = header[6];                            // type of fragment
+    const uint32_t length = a | (b << 8);                           // length of fragment
+    if (kHeaderSize + length > buffer_.size()) {                    // 一个fragment由Header和data组成
       ReportDrop(buffer_.size(), "bad record length");
       buffer_.clear();
       return kBadRecord;
