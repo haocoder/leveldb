@@ -11,6 +11,7 @@
 #endif
 
 #include <assert.h>
+#include <port_posix.h>
 
 #include "include/cache.h"
 #include "port/port.h"
@@ -168,7 +169,7 @@ void LRUCache::LRU_Append(LRUHandle* e) {
 }
 
 Cache::Handle* LRUCache::Lookup(const Slice& key) {
-  MutexLock l(&mutex_);     // 什么时候unlock
+  MutexLock l(&mutex_);     // l对象析构时调用unlock释放锁
 
   LRUHandle dummy;
   dummy.next = &dummy;

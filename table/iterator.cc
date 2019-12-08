@@ -40,7 +40,7 @@ void Iterator::RegisterCleanup(CleanupFunction func, void* arg1, void* arg2) {
   c->arg2 = arg2;
 }
 
-namespace {   // 嵌套的匿名命名空间，作用？
+namespace {
 class EmptyIterator : public Iterator {
  public:
   EmptyIterator(const Status& s) : status_(s) { }

@@ -41,7 +41,7 @@ class PosixSequentialFile: public SequentialFile {
   virtual Status Read(size_t n, Slice* result, char* scratch) {
     Status s;
     size_t r = fread_unlocked(scratch, 1, n, file_);
-    *result = Slice(scratch, r);        // result指向一个临时对象？
+    *result = Slice(scratch, r);
     if (r < n) {
       if (feof(file_)) {
         // We leave status as ok if we hit the end of the file
